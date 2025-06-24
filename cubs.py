@@ -1,6 +1,50 @@
 import pygame
 from random import randint
-
+cup=(300,100)
+cleft=(150,200)
+cbot=(300,300)
+cright=(450,200)
+class bplayers(pygame.sprite.Sprite):
+    left_blue=0
+    right_blue=0
+    top_blue=0
+    bottom_blue=0
+    #d = √((x₂ - x₁)² + (y₂ - y₁)²)
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((Side,Side))
+        self.image.fill(BLUE_TEAM_COLOR) 
+        self.rect = self.image.get_rect(center=(xsb,ys))
+    
+    
+    def update(self, *args):                            
+        
+        self.x,self.y=rand_pos_x(),rand_pos_y()
+        self.rect.center=(self.x,self.y)
+        if self.x<W/2:bplayers.left_blue+=(((self.x-cleft[0])**2+(self.y-cleft[1])**2)**0.5)**-1            
+        else:bplayers.right_blue+=(((self.x-cright[0])**2+(self.y-cright[1])**2)**0.5)**-1                    
+        if self.y<H/2:bplayers.top_blue+=(((self.x-cup[0])**2+(self.y-cup[1])**2)**0.5)**-1           
+        else:bplayers.bottom_blue+=(((self.x-cbot[0])**2+(self.y-cbot[1])**2)**0.5)**-1
+class rplayers(pygame.sprite.Sprite):
+    left_red=0
+    right_red=0
+    top_red=0
+    bottom_red=0
+    
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.hero = pygame.Surface((Side,Side))
+        self.hero.fill(RED_TEAM_COLOR) 
+        self.rect = self.hero.get_rect(center=(xsr,ys))
+    
+    def update(self, *args):                            
+        
+        self.x,self.y=rand_pos_x(),rand_pos_y()
+        self.rect.center=(self.x,self.y)
+        if self.x<W/2:rplayers.left_red+=(((self.x-cleft[0])**2+(self.y-cleft[1])**2)**0.5)**-1            
+        else:rplayers.right_red+=(((self.x-cright[0])**2+(self.y-cright[1])**2)**0.5)**-1                    
+        if self.y<H/2:rplayers.top_red+=(((self.x-cup[0])**2+(self.y-cup[1])**2)**0.5)**-1           
+        else:rplayers.bottom_red+=(((self.x-cbot[0])**2+(self.y-cbot[1])**2)**0.5)**-1
 pygame.init()
 
 W = 600
@@ -18,117 +62,171 @@ WHITE = (255,255,255)
 BLUE = (0,255,255)
 RED = (139,0,0)
 GREEN = (34,139,34)
+BROWN=(168,71,10)
+YELLOW=(252,186,3)
+DARK_BLUE=(63,57,150)
 BLACK = (0,0,0)
+
+BLUE_TEAM_COLOR=BLUE
+RED_TEAM_COLOR=RED
+STADION_COLOR=GREEN
 SCREEN_COLOR=GREEN
+
 clock= pygame.time.Clock()
-FPS = 60
 
+blue_t=pygame.sprite.Group()
+b1=bplayers()
+b2=bplayers()
+b3=bplayers()
+b4=bplayers()
+b5=bplayers()
+blue_t.add(b1,b2,b3,b4,b5)
 
-hero = pygame.Surface((Side,Side))
-hero.fill(BLUE) 
-rect = hero.get_rect(center=(xsb,ys))
+r1=rplayers()
+r2=rplayers()
+r3=rplayers()
+r4=rplayers()
+r5=rplayers()
 
-hero2 = pygame.Surface((Side,Side))
-hero2.fill(BLUE) 
-rect2 = hero2.get_rect(center=(xsb,ys))
-
-hero3 = pygame.Surface((Side,Side))
-hero3.fill(BLUE) 
-rect3 = hero3.get_rect(center=(xsb,ys))
-
-
-hero4 = pygame.Surface((Side,Side))
-hero4.fill(RED) 
-rect4 = hero4.get_rect(center=(xsr,ys))
-
-hero5 = pygame.Surface((Side,Side))
-hero5.fill(RED) 
-rect5 = hero5.get_rect(center=(xsr,ys))
-
-hero6 = pygame.Surface((Side,Side))
-hero6.fill(RED) 
-rect6 = hero6.get_rect(center=(xsr,ys))
-
-
+def rand_pos_x():
+    a=randint(Half_Side,Xboard)
+    return a
+def rand_pos_y():
+    a=randint(Half_Side,Yboard)
+    return a
+def pisdavsem():
+    bplayers.bottom_blue=0
+    bplayers.left_blue=0
+    bplayers.right_blue=0
+    bplayers.top_blue=0
+    b1.update()
+    b2.update()
+    b3.update()
+    b4.update()
+    b5.update()             
+        
+    rplayers.bottom_red=0
+    rplayers.top_red=0
+    rplayers.left_red=0
+    rplayers.right_red=0
+    r1.update()
+    r2.update()
+    r3.update()
+    r4.update()
+    r5.update()
 while True:
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             exit()
-
-        elif event.type == pygame.KEYDOWN:
+        elif event.type==pygame.MOUSEBUTTONDOWN:
+            print(event.button)
+            if event.button==1:
+                pass
+            elif event.button==3:
+                pass
+        elif event.type == pygame.KEYDOWN:           
             if event.key == pygame.K_SPACE:                
-                SCREEN_COLOR=GREEN
-                x,y = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                x2,y2 = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                x3,y3 = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                x4,y4 = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                x5,y5 = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                x6,y6 = randint(Half_Side,Xboard),randint(Half_Side,Yboard)
-                rect.center=(x,y)
-                rect2.center=(x2,y2)
-                rect3.center=(x3,y3)
-                rect4.center=(x4,y4)
-                rect5.center=(x5,y5)
-                rect6.center=(x6,y6)
-                left_blue=0
-                left_red=0
-                top_blue=0
-                top_red=0
-                right_blue=0
-                right_red=0
-                bottom_blue=0
-                bottom_red=0
-                if x<W/2:left_blue+=1 
-                else: right_blue+=1
-                if x2<W/2:left_blue+=1 
-                else: right_blue+=1
-                if x3<W/2:left_blue+=1 
-                else: right_blue+=1
-                if y<H/2:top_blue+=1
-                else: bottom_blue+=1
-                if y2<H/2:top_blue+=1
-                else: bottom_blue+=1
-                if y3<H/2:top_blue+=1
-                else: bottom_blue+=1
                 
-                if x4<W/2:left_red+=1 
-                else: right_red+=1
-                if x5<W/2:left_red+=1 
-                else: right_red+=1
-                if x6<W/2:left_red+=1 
-                else: right_red+=1
-                if y4<H/2:top_red+=1
-                else:bottom_red+=1
-                if y5<H/2:top_red+=1
-                else:bottom_red+=1
-                if y6<H/2:top_red+=1
-                else:bottom_red+=1
+                SCREEN_COLOR=STADION_COLOR
+                pisdavsem()
+            elif event.key == pygame.K_LEFT and bplayers.left_blue>rplayers.left_red:SCREEN_COLOR=BLUE_TEAM_COLOR 
+            elif event.key == pygame.K_LEFT and bplayers.left_blue<rplayers.left_red:SCREEN_COLOR=RED_TEAM_COLOR            
+            elif event.key == pygame.K_LEFT and bplayers.left_blue==rplayers.left_red:SCREEN_COLOR=BLACK
 
+            elif event.key == pygame.K_RIGHT and bplayers.right_blue>rplayers.right_red:SCREEN_COLOR=BLUE_TEAM_COLOR 
+            elif event.key == pygame.K_RIGHT and bplayers.right_blue<rplayers.right_red: SCREEN_COLOR=RED_TEAM_COLOR
+            elif event.key == pygame.K_RIGHT and bplayers.right_blue==rplayers.right_red:SCREEN_COLOR=BLACK
+
+            elif event.key == pygame.K_UP and bplayers.top_blue>rplayers.top_red:SCREEN_COLOR=BLUE_TEAM_COLOR 
+            elif event.key == pygame.K_UP and bplayers.top_blue<rplayers.top_red: SCREEN_COLOR=RED_TEAM_COLOR
+            elif event.key == pygame.K_UP and bplayers.top_blue==rplayers.top_red:SCREEN_COLOR=BLACK
+
+            elif event.key == pygame.K_DOWN and bplayers.bottom_blue>rplayers.bottom_red:SCREEN_COLOR=BLUE_TEAM_COLOR 
+            elif event.key == pygame.K_DOWN and bplayers.bottom_blue<rplayers.bottom_red: SCREEN_COLOR=RED_TEAM_COLOR
+            elif event.key == pygame.K_DOWN and bplayers.bottom_blue==rplayers.bottom_red:SCREEN_COLOR=BLACK
+            
+            elif event.key == pygame.K_1:
+                STADION_COLOR=YELLOW
                 
+                BLUE_TEAM_COLOR=DARK_BLUE
+                RED_TEAM_COLOR=BROWN
+                del b1,b2,b3,b4,b5
+    
+                del r1,r2,r3,r4,r5
+                b1=bplayers()
+                b2=bplayers()
+                b3=bplayers()
+                b4=bplayers()
+                b5=bplayers()
+                r1=rplayers()
+                r2=rplayers()
+                r3=rplayers()
+                r4=rplayers()
+                r5=rplayers()  
+            elif event.key == pygame.K_2:
+                STADION_COLOR=WHITE
+                BLUE_TEAM_COLOR=DARK_BLUE
+                RED_TEAM_COLOR=BROWN
+                del b1,b2,b3,b4,b5
+    
+                del r1,r2,r3,r4,r5
+                b1=bplayers()
+                b2=bplayers()
+                b3=bplayers()
+                b4=bplayers()
+                b5=bplayers()
+                r1=rplayers()
+                r2=rplayers()
+                r3=rplayers()
+                r4=rplayers()
+                r5=rplayers()
+            elif event.key == pygame.K_3:
+                STADION_COLOR=GREEN
+                BLUE_TEAM_COLOR=WHITE
+                RED_TEAM_COLOR=YELLOW
+                del b1,b2,b3,b4,b5
+    
+                del r1,r2,r3,r4,r5
+                b1=bplayers()
+                b2=bplayers()
+                b3=bplayers()
+                b4=bplayers()
+                b5=bplayers()
+                r1=rplayers()
+                r2=rplayers()
+                r3=rplayers()
+                r4=rplayers()
+                r5=rplayers()
+            elif event.key == pygame.K_4:
+                STADION_COLOR=GREEN
+                BLUE_TEAM_COLOR=BLUE
+                RED_TEAM_COLOR=RED
+                del b1,b2,b3,b4,b5
+    
+                del r1,r2,r3,r4,r5
+                b1=bplayers()
+                b2=bplayers()
+                b3=bplayers()
+                b4=bplayers()
+                b5=bplayers()
+                r1=rplayers()
+                r2=rplayers()
+                r3=rplayers()
+                r4=rplayers()
+                r5=rplayers()
+            elif event.key == pygame.K_5:
+                print(bplayers.left_blue,bplayers.top_blue,bplayers.right_blue,bplayers.bottom_blue)
+                print(rplayers.left_red,rplayers.top_red,rplayers.right_red,rplayers.bottom_red)
+            elif event.key == pygame.K_6:SCREEN_COLOR=(100,100,100)
+    sc.fill(SCREEN_COLOR)    
+    blue_t.draw(sc)
 
-            elif event.key == pygame.K_LEFT and left_blue>left_red:SCREEN_COLOR=BLUE 
-            elif event.key == pygame.K_LEFT and left_blue<left_red: SCREEN_COLOR=RED
-            elif event.key == pygame.K_LEFT and left_blue==left_red:SCREEN_COLOR=BLACK
-
-            elif event.key == pygame.K_RIGHT and right_blue>right_red:SCREEN_COLOR=BLUE 
-            elif event.key == pygame.K_RIGHT and right_blue<right_red: SCREEN_COLOR=RED
-            elif event.key == pygame.K_RIGHT and right_blue==right_red:SCREEN_COLOR=BLACK
-
-            elif event.key == pygame.K_UP and top_blue>top_red:SCREEN_COLOR=BLUE 
-            elif event.key == pygame.K_UP and top_blue<top_red: SCREEN_COLOR=RED
-            elif event.key == pygame.K_UP and top_blue==top_red:SCREEN_COLOR=BLACK
-
-            elif event.key == pygame.K_DOWN and bottom_blue>bottom_red:SCREEN_COLOR=BLUE 
-            elif event.key == pygame.K_DOWN and bottom_blue<bottom_red: SCREEN_COLOR=RED
-            elif event.key == pygame.K_DOWN and bottom_blue==bottom_red:SCREEN_COLOR=BLACK
-
-
-    sc.fill(SCREEN_COLOR)
-    sc.blit(hero,rect)
-    sc.blit(hero2,rect2)
-    sc.blit(hero3,rect3)
-    sc.blit(hero4,rect4)
-    sc.blit(hero5,rect5)
-    sc.blit(hero6,rect6)
+    sc.blit(r1.hero,r1.rect)
+    sc.blit(r2.hero,r2.rect)
+    sc.blit(r3.hero,r3.rect)
+    sc.blit(r4.hero,r4.rect)
+    sc.blit(r5.hero,r5.rect)
+    
     pygame.display.update()                        
-    clock.tick(3)        
+    clock.tick(2)        
