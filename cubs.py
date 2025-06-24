@@ -14,11 +14,8 @@ class bplayers(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((Side,Side))
         self.image.fill(BLUE_TEAM_COLOR) 
-        self.rect = self.image.get_rect(center=(xsb,ys))
-    
-    
-    def update(self, *args):                            
-        
+        self.rect = self.image.get_rect(center=(xsb,ys)) 
+    def update(self, *args):                                   
         self.x,self.y=rand_pos_x(),rand_pos_y()
         self.rect.center=(self.x,self.y)
         if self.x<W/2:bplayers.left_blue+=(((self.x-cleft[0])**2+(self.y-cleft[1])**2)**0.5)**-1            
