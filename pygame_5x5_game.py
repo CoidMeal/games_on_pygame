@@ -204,6 +204,10 @@ def draw_status(surface: pygame.Surface, player_turn: int, winner: Optional[int]
     else:
         text_surface = font.render(f"Победил игрок {winner}. Нажмите R, чтобы начать заново", True, BLACK)
 
+    # Fill a small banner behind text for readability
+    banner_rect = pygame.Rect(4, 4, text_surface.get_width() + 8, text_surface.get_height() + 6)
+    pygame.draw.rect(surface, (255, 255, 255, 220), banner_rect)
+    pygame.draw.rect(surface, BLACK, banner_rect, 1)
     surface.blit(text_surface, (8, 8))
 
 
@@ -238,15 +242,22 @@ def main():
     cached_empty_moves = []
     cached_capture_moves = []
     winner = None
+    hover_cell: Optional[tuple[int, int]] = None
 
     def select_piece_at_cell(row_index: int, col_index: int):
         nonlocal selected_piece, cached_empty_moves, cached_capture_moves
         piece = get_piece_at(pieces, row_index, col_index)
         if piece is not None and piece["player"] == player_turn and winner is None:
+            # Deselect if clicking same piece
+            if selected_piece is piece:
+                selected_piece = None
+                cached_empty_moves = []
+                cached_capture_moves = []
+                return
             selected_piece = piece
             cached_empty_moves, cached_capture_moves = legal_moves_for_piece(pieces, piece)
         else:
-            # Keep selection if click is invalid
+            # Clicking on an empty cell when a piece is selected will be handled elsewhere
             pass
 
     def try_move_selected_to(row_index: int, col_index: int):
@@ -274,7 +285,13 @@ def main():
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    # ESC clears selection, second ESC exits
+                    if selected_piece is not None:
+                        selected_piece = None
+                        cached_empty_moves = []
+                        cached_capture_moves = []
+                    else:
+                        running = False
                 if event.key == pygame.K_r:
                     # Restart game
                     pieces = create_initial_pieces()
@@ -283,6 +300,10 @@ def main():
                     cached_empty_moves = []
                     cached_capture_moves = []
                     winner = None
+            elif event.type == pygame.MOUSEMOTION:
+                mx, my = event.pos
+                row_index, col_index = pixel_to_cell((mx, my))
+                hover_cell = (row_index, col_index) if inside_board(row_index, col_index) else None
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if winner is not None:
                     continue
@@ -319,11 +340,20 @@ def main():
                         try_move_selected_to(row_index, col_index)
 
         draw_board(screen)
-        # Highlights
+
+        # Hover highlight
+        if hover_cell is not None and winner is None:
+            hr, hc = hover_cell
+            if inside_board(hr, hc):
+                draw_highlight(screen, hr, hc, (120, 120, 120), 2)
+
+        # Selection + move previews
         if selected_piece is not None:
             draw_highlight(screen, selected_piece["row"], selected_piece["col"], YELLOW, 4)
+            # Empty moves as green dots, capture moves as red rings
             draw_move_dots(screen, cached_empty_moves, GREEN)
-            draw_move_dots(screen, cached_capture_moves, RED)
+            for cr, cc in cached_capture_moves:
+                draw_highlight(screen, cr, cc, RED, 3)
 
         # Pieces
         for piece in pieces:
