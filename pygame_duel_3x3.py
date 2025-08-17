@@ -109,6 +109,17 @@ class GameState:
         piece = self.piece_at(row, col)
         return piece is not None and piece.owner_id == owner_id
 
+    def can_capture(self, attacker: Piece, defender: Piece) -> bool:
+        if attacker.owner_id == defender.owner_id:
+            return False
+        if attacker.piece_type == PIECE_TRIANGLE:
+            return defender.piece_type == PIECE_CIRCLE
+        if attacker.piece_type == PIECE_CIRCLE:
+            return defender.piece_type == PIECE_SQUARE
+        if attacker.piece_type == PIECE_SQUARE:
+            return defender.piece_type == PIECE_TRIANGLE
+        return False
+
     def get_legal_moves_for(self, piece: Piece) -> List[Tuple[int, int]]:
         directions: List[Tuple[int, int]] = []
 
@@ -135,9 +146,15 @@ class GameState:
             nr, nc = piece.row + dr, piece.col + dc
             if not self.is_inside(nr, nc):
                 continue
-            if self.is_occupied_by_owner(nr, nc, piece.owner_id):
+            occupant = self.piece_at(nr, nc)
+            if occupant is None:
+                legal_moves.append((nr, nc))
                 continue
-            legal_moves.append((nr, nc))
+            if occupant.owner_id == piece.owner_id:
+                continue
+            # Enemy occupant: only legal if capture is allowed by RPS rule
+            if self.can_capture(piece, occupant):
+                legal_moves.append((nr, nc))
 
         return legal_moves
 
@@ -145,9 +162,11 @@ class GameState:
         if self.winner is not None:
             return
 
-        # Capture if enemy present
+        # Capture if enemy present (only if allowed)
         target_piece = self.piece_at(target_row, target_col)
         if target_piece is not None and target_piece.owner_id != piece.owner_id:
+            if not self.can_capture(piece, target_piece):
+                return
             self.pieces.remove(target_piece)
             self.captured_by_player[piece.owner_id] += 1
 
