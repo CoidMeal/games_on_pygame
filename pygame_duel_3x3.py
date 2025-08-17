@@ -61,6 +61,63 @@ class Piece:
         )
 
 
+@dataclass
+class Layout:
+    width: int
+    height: int
+    margin: int
+    info_panel_height: int
+    cell_size: int
+    grid_line_width: int
+
+
+def compute_layout(win_w: int, win_h: int) -> Layout:
+    # Scale UI for mobile screens
+    min_dim = min(win_w, win_h)
+    margin = max(10, int(min_dim * 0.04))
+    info_panel_height = max(90, int(min_dim * 0.18))
+
+    available_w = max(1, win_w - 2 * margin)
+    available_h = max(1, win_h - 2 * margin - info_panel_height)
+    cell_size = max(48, min(available_w // BOARD_COLS, available_h // BOARD_ROWS))
+    grid_line_width = max(2, cell_size // 20)
+
+    return Layout(
+        width=win_w,
+        height=win_h,
+        margin=margin,
+        info_panel_height=info_panel_height,
+        cell_size=cell_size,
+        grid_line_width=grid_line_width,
+    )
+
+
+def compute_ui_rects(layout: Layout) -> Tuple[pygame.Rect, pygame.Rect, int]:
+    # Compute panel top and button rects
+    board_pixel_h = layout.margin * 2 + layout.cell_size * BOARD_ROWS
+    panel_top = board_pixel_h + 12
+
+    gap = max(8, int(min(layout.width, layout.height) * 0.02))
+    btn_h = max(44, int(layout.info_panel_height * 0.45))
+    btn_w = (layout.width - 2 * layout.margin - gap)
+    btn_w = max(100, btn_w // 2)
+
+    btn_y = panel_top + 8
+    restart_rect = pygame.Rect(layout.margin, btn_y, btn_w, btn_h)
+    exit_rect = pygame.Rect(layout.margin + btn_w + gap, btn_y, btn_w, btn_h)
+    return restart_rect, exit_rect, panel_top
+
+
+def draw_button(surface: pygame.Surface, rect: pygame.Rect, text: str, font: pygame.font.Font, *, primary: bool = False) -> None:
+    base_color = COLOR_MOVE if primary else (90, 90, 90)
+    border_color = (255, 255, 255) if primary else (160, 160, 160)
+    pygame.draw.rect(surface, base_color, rect, border_radius=12)
+    pygame.draw.rect(surface, border_color, rect, width=3, border_radius=12)
+    label = font.render(text, True, COLOR_TEXT)
+    label_rect = label.get_rect(center=rect.center)
+    surface.blit(label, label_rect)
+
+
 class GameState:
     def __init__(self) -> None:
         self.pieces: List[Piece] = []
@@ -199,23 +256,23 @@ class GameState:
 
 # --- Rendering helpers ---
 
-def board_to_pixel(row: int, col: int) -> Tuple[int, int, int, int]:
-    x = MARGIN + col * CELL_SIZE
-    y = MARGIN + row * CELL_SIZE
-    return x, y, CELL_SIZE, CELL_SIZE
+def board_to_pixel(layout: Layout, row: int, col: int) -> Tuple[int, int, int, int]:
+    x = layout.margin + col * layout.cell_size
+    y = layout.margin + row * layout.cell_size
+    return x, y, layout.cell_size, layout.cell_size
 
 
-def draw_grid(surface: pygame.Surface) -> None:
+def draw_grid(surface: pygame.Surface, layout: Layout) -> None:
     for r in range(BOARD_ROWS + 1):
-        y = MARGIN + r * CELL_SIZE
-        pygame.draw.line(surface, COLOR_GRID, (MARGIN, y), (MARGIN + CELL_SIZE * BOARD_COLS, y), GRID_LINE_WIDTH)
+        y = layout.margin + r * layout.cell_size
+        pygame.draw.line(surface, COLOR_GRID, (layout.margin, y), (layout.margin + layout.cell_size * BOARD_COLS, y), layout.grid_line_width)
     for c in range(BOARD_COLS + 1):
-        x = MARGIN + c * CELL_SIZE
-        pygame.draw.line(surface, COLOR_GRID, (x, MARGIN), (x, MARGIN + CELL_SIZE * BOARD_ROWS), GRID_LINE_WIDTH)
+        x = layout.margin + c * layout.cell_size
+        pygame.draw.line(surface, COLOR_GRID, (x, layout.margin), (x, layout.margin + layout.cell_size * BOARD_ROWS), layout.grid_line_width)
 
 
-def draw_piece(surface: pygame.Surface, piece: Piece) -> None:
-    x, y, w, h = board_to_pixel(piece.row, piece.col)
+def draw_piece(surface: pygame.Surface, layout: Layout, piece: Piece) -> None:
+    x, y, w, h = board_to_pixel(layout, piece.row, piece.col)
     cx = x + w // 2
     cy = y + h // 2
 
@@ -250,31 +307,31 @@ def draw_piece(surface: pygame.Surface, piece: Piece) -> None:
         pygame.draw.polygon(surface, color_dark, [p1, p2, p3], 3)
 
 
-def draw_highlights(surface: pygame.Surface, moves: List[Tuple[int, int]]) -> None:
+def draw_highlights(surface: pygame.Surface, layout: Layout, moves: List[Tuple[int, int]]) -> None:
     for (r, c) in moves:
-        x, y, w, h = board_to_pixel(r, c)
+        x, y, w, h = board_to_pixel(layout, r, c)
         rect = pygame.Rect(x + 6, y + 6, w - 12, h - 12)
         pygame.draw.rect(surface, COLOR_MOVE, rect, 4, border_radius=10)
 
 
-def draw_selection(surface: pygame.Surface, piece: Piece) -> None:
-    x, y, w, h = board_to_pixel(piece.row, piece.col)
+def draw_selection(surface: pygame.Surface, layout: Layout, piece: Piece) -> None:
+    x, y, w, h = board_to_pixel(layout, piece.row, piece.col)
     rect = pygame.Rect(x + 4, y + 4, w - 8, h - 8)
     pygame.draw.rect(surface, COLOR_HL, rect, 5, border_radius=10)
 
 
 # --- Input helpers ---
 
-def pixel_to_board(mouse_pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
+def pixel_to_board(layout: Layout, mouse_pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
     x, y = mouse_pos
-    board_left = MARGIN
-    board_top = MARGIN
+    board_left = layout.margin
+    board_top = layout.margin
     if x < board_left or y < board_top:
         return None
     x_rel = x - board_left
     y_rel = y - board_top
-    col = x_rel // CELL_SIZE
-    row = y_rel // CELL_SIZE
+    col = x_rel // layout.cell_size
+    row = y_rel // layout.cell_size
     if 0 <= row < BOARD_ROWS and 0 <= col < BOARD_COLS:
         return int(row), int(col)
     return None
@@ -282,13 +339,16 @@ def pixel_to_board(mouse_pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
 
 def main() -> None:
     pygame.init()
-    pygame.display.set_caption("3x3 Duel: Triangle, Square, Circle")
+    pygame.display.set_caption("3x3 Duel (Mobile)")
 
-    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    # Prefer fullscreen for mobile; fallback to windowed if needed
+    screen: pygame.Surface
+    try:
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    except Exception:
+        screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
     clock = pygame.time.Clock()
-
-    font = pygame.font.SysFont("arial", 28)
-    small_font = pygame.font.SysFont("arial", 22)
 
     state = GameState()
     state.setup_random()
@@ -296,8 +356,63 @@ def main() -> None:
     selected: Optional[Piece] = None
     legal_moves: List[Tuple[int, int]] = []
 
+    def handle_pointer_down(px: int, py: int, layout: Layout, restart_rect: pygame.Rect, exit_rect: pygame.Rect) -> Tuple[Optional[Piece], List[Tuple[int, int]], bool]:
+        nonlocal state
+        nonlocal selected
+        nonlocal legal_moves
+        # Buttons first
+        if restart_rect.collidepoint(px, py):
+            state.setup_random()
+            selected = None
+            legal_moves = []
+            return selected, legal_moves, False
+        if exit_rect.collidepoint(px, py):
+            return selected, legal_moves, True
+
+        # Board interaction
+        board_cell = pixel_to_board(layout, (px, py))
+        if board_cell is None:
+            selected = None
+            legal_moves = []
+            return selected, legal_moves, False
+
+        row, col = board_cell
+        clicked_piece = state.piece_at(row, col)
+
+        if state.winner is not None:
+            return selected, legal_moves, False
+
+        if selected is not None:
+            if (row, col) in legal_moves:
+                state.apply_move(selected, row, col)
+                selected = None
+                legal_moves = []
+            else:
+                if clicked_piece is not None and clicked_piece.owner_id == state.current_player:
+                    selected = clicked_piece
+                    legal_moves = state.get_legal_moves_for(clicked_piece)
+                else:
+                    selected = None
+                    legal_moves = []
+        else:
+            if clicked_piece is not None and clicked_piece.owner_id == state.current_player:
+                selected = clicked_piece
+                legal_moves = state.get_legal_moves_for(clicked_piece)
+            else:
+                selected = None
+                legal_moves = []
+        return selected, legal_moves, False
+
     running = True
     while running:
+        win_w, win_h = screen.get_size()
+        layout = compute_layout(win_w, win_h)
+        restart_rect, exit_rect, panel_top = compute_ui_rects(layout)
+
+        # Fonts sized to panel
+        font = pygame.font.Font(None, max(22, int(layout.info_panel_height * 0.42)))
+        small_font = pygame.font.Font(None, max(18, int(layout.info_panel_height * 0.28)))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -309,80 +424,53 @@ def main() -> None:
                     selected = None
                     legal_moves = []
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                board_cell = pixel_to_board(event.pos)
-                if board_cell is None:
-                    # Clicked outside board; clear selection
-                    selected = None
-                    legal_moves = []
-                else:
-                    row, col = board_cell
-                    clicked_piece = state.piece_at(row, col)
-
-                    if state.winner is not None:
-                        # Ignore clicks when game over except R to restart
-                        pass
-                    else:
-                        if selected is not None:
-                            # If clicked a legal move, perform it
-                            if (row, col) in legal_moves:
-                                state.apply_move(selected, row, col)
-                                selected = None
-                                legal_moves = []
-                            else:
-                                # If clicked own piece, change selection
-                                if clicked_piece is not None and clicked_piece.owner_id == state.current_player:
-                                    selected = clicked_piece
-                                    legal_moves = state.get_legal_moves_for(clicked_piece)
-                                else:
-                                    selected = None
-                                    legal_moves = []
-                        else:
-                            # No selection yet; select if it's current player's piece
-                            if clicked_piece is not None and clicked_piece.owner_id == state.current_player:
-                                selected = clicked_piece
-                                legal_moves = state.get_legal_moves_for(clicked_piece)
-                            else:
-                                selected = None
-                                legal_moves = []
+                sx, sy = event.pos
+                _, _, should_quit = handle_pointer_down(sx, sy, layout, restart_rect, exit_rect)
+                if should_quit:
+                    running = False
+            elif event.type == pygame.FINGERDOWN:
+                # Convert normalized touch coords to pixels
+                sx = int(event.x * win_w)
+                sy = int(event.y * win_h)
+                _, _, should_quit = handle_pointer_down(sx, sy, layout, restart_rect, exit_rect)
+                if should_quit:
+                    running = False
 
         # --- Draw ---
         screen.fill(COLOR_BG)
 
         # Board and pieces
-        draw_grid(screen)
+        draw_grid(screen, layout)
 
-        # Selection and legal moves first so they appear under the pieces outline but above grid
+        # Selection and legal moves
         if selected is not None:
-            draw_selection(screen, selected)
-            draw_highlights(screen, legal_moves)
+            draw_selection(screen, layout, selected)
+            draw_highlights(screen, layout, legal_moves)
 
-        # Draw pieces
-        # Ensure stable draw order: Player 2 then Player 1 so selection highlight remains visible
+        # Draw pieces (order for highlight visibility)
         for owner in (PLAYER_TWO, PLAYER_ONE):
             for piece in state.pieces:
                 if piece.owner_id == owner:
-                    draw_piece(screen, piece)
+                    draw_piece(screen, layout, piece)
 
         # Info panel
-        panel_top = MARGIN + CELL_SIZE * BOARD_ROWS + 12
-
         if state.winner is None:
             turn_text = f"Ход: Игрок {1 if state.current_player == PLAYER_ONE else 2}"
         else:
             turn_text = f"Победа! Игрок {1 if state.winner == PLAYER_ONE else 2}"
         turn_surf = font.render(turn_text, True, COLOR_TEXT)
-        screen.blit(turn_surf, (MARGIN, panel_top))
+        screen.blit(turn_surf, (layout.margin, panel_top))
 
         cap_text = (
             f"Съедено — Игрок 1: {state.captured_by_player[PLAYER_ONE]}  |  "
             f"Игрок 2: {state.captured_by_player[PLAYER_TWO]}  (до 2)"
         )
         cap_surf = small_font.render(cap_text, True, COLOR_SUBTEXT)
-        screen.blit(cap_surf, (MARGIN, panel_top + 40))
+        screen.blit(cap_surf, (layout.margin, panel_top + int(layout.info_panel_height * 0.28)))
 
-        hint_text = "ЛКМ: выбрать/ходить  •  R: перезапуск  •  Esc: выход"
-        hint_surf = small_font.render(hint_text, True, COLOR_SUBTEXT)
-        screen.blit(hint_surf, (MARGIN, panel_top + 70))
+        # Buttons
+        draw_button(screen, restart_rect, "Сброс", small_font, primary=True)
+        draw_button(screen, exit_rect, "Выход", small_font, primary=False)
 
         pygame.display.flip()
         clock.tick(FPS)
