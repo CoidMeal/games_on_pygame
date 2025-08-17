@@ -7,8 +7,8 @@ import pygame
 
 
 # --- Constants ---
-BOARD_ROWS = 3
-BOARD_COLS = 3
+BOARD_ROWS = 4
+BOARD_COLS = 4
 CELL_SIZE = 160
 GRID_LINE_WIDTH = 4
 MARGIN = 32  # outer margin around the board
@@ -126,6 +126,35 @@ class GameState:
         self.captured_by_player: Dict[int, int] = {PLAYER_ONE: 0, PLAYER_TWO: 0}
         self.winner: Optional[int] = None
 
+    def _are_adjacent(self, a: Tuple[int, int], b: Tuple[int, int]) -> bool:
+        return max(abs(a[0] - b[0]), abs(a[1] - b[1])) <= 1
+
+    def _generate_non_adjacent_start_positions(self) -> List[Tuple[int, int]]:
+        cells = [(r, c) for r in range(BOARD_ROWS) for c in range(BOARD_COLS)]
+        for _ in range(2000):
+            placements = random.sample(cells, 6)
+            p1_cells = placements[:3]
+            p2_cells = placements[3:]
+            ok = True
+            for a in p1_cells:
+                for b in p2_cells:
+                    if self._are_adjacent(a, b):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                return placements
+        # Fallback: P1 on top row, P2 on bottom row (guaranteed non-adjacent)
+        cols = list(range(BOARD_COLS))
+        random.shuffle(cols)
+        p1_cols = cols[:3]
+        random.shuffle(cols)
+        p2_cols = cols[:3]
+        p1_cells = [(0, c) for c in p1_cols]
+        p2_cells = [(BOARD_ROWS - 1, c) for c in p2_cols]
+        return p1_cells + p2_cells
+
     def setup_random(self) -> None:
         self.pieces.clear()
         self.board.clear()
@@ -133,12 +162,7 @@ class GameState:
         self.captured_by_player = {PLAYER_ONE: 0, PLAYER_TWO: 0}
         self.winner = None
 
-        # All cells on the 3x3 board
-        cells = [(r, c) for r in range(BOARD_ROWS) for c in range(BOARD_COLS)]
-        random.shuffle(cells)
-
-        # Create three pieces per player in random positions
-        placements = cells[:6]
+        placements = self._generate_non_adjacent_start_positions()
 
         # Player 1 forward: down (+1)
         self.pieces.append(Piece(PLAYER_ONE, PIECE_CIRCLE, placements[0][0], placements[0][1], +1))
@@ -187,13 +211,12 @@ class GameState:
             # Orthogonal only, 1 step
             directions = [(-1, 0), (+1, 0), (0, -1), (0, +1)]
         elif piece.piece_type == PIECE_TRIANGLE:
-            # Forward/back one step, plus backward diagonals relative to forward
+            # New rules: forward diagonals (left/right) + straight back, 1 step
             f = piece.forward_dir
             directions = [
-                (f, 0),           # forward
-                (-f, 0),          # backward
-                (-f, -1),         # backward-left (relative to forward)
-                (-f, +1),         # backward-right (relative to forward)
+                (f, -1),          # forward-left
+                (f, +1),          # forward-right
+                (-f, 0),          # straight back
             ]
         else:
             directions = []
@@ -215,6 +238,13 @@ class GameState:
 
         return legal_moves
 
+    def has_any_legal_move(self, owner_id: int) -> bool:
+        for p in self.pieces:
+            if p.owner_id == owner_id:
+                if self.get_legal_moves_for(p):
+                    return True
+        return False
+
     def apply_move(self, piece: Piece, target_row: int, target_col: int) -> None:
         if self.winner is not None:
             return
@@ -228,7 +258,6 @@ class GameState:
             self.captured_by_player[piece.owner_id] += 1
 
         # Move the piece
-        # Remove old index
         if (piece.row, piece.col) in self.board:
             self.board.pop((piece.row, piece.col), None)
 
@@ -249,9 +278,12 @@ class GameState:
         if self.captured_by_player[piece.owner_id] >= 2:
             self.winner = piece.owner_id
 
-        # Switch turns if no winner yet
+        # Switch turns and check trap condition if no winner yet
         if self.winner is None:
             self.current_player = PLAYER_TWO if self.current_player == PLAYER_ONE else PLAYER_ONE
+            if not self.has_any_legal_move(self.current_player):
+                # Current player has no legal moves -> they are trapped and lose
+                self.winner = PLAYER_TWO if self.current_player == PLAYER_ONE else PLAYER_ONE
 
 
 # --- Rendering helpers ---
@@ -437,21 +469,27 @@ def main() -> None:
                     running = False
 
         # --- Draw ---
-        screen.fill(COLOR_BG)
+        if state.winner is None:
+            screen.fill(COLOR_BG)
+        else:
+            winner_color = COLOR_P1 if state.winner == PLAYER_ONE else COLOR_P2
+            screen.fill(winner_color)
 
         # Board and pieces
-        draw_grid(screen, layout)
+        if state.winner is None:
+            draw_grid(screen, layout)
 
         # Selection and legal moves
-        if selected is not None:
+        if state.winner is None and selected is not None:
             draw_selection(screen, layout, selected)
             draw_highlights(screen, layout, legal_moves)
 
         # Draw pieces (order for highlight visibility)
-        for owner in (PLAYER_TWO, PLAYER_ONE):
-            for piece in state.pieces:
-                if piece.owner_id == owner:
-                    draw_piece(screen, layout, piece)
+        if state.winner is None:
+            for owner in (PLAYER_TWO, PLAYER_ONE):
+                for piece in state.pieces:
+                    if piece.owner_id == owner:
+                        draw_piece(screen, layout, piece)
 
         # Info panel
         if state.winner is None:
@@ -466,7 +504,8 @@ def main() -> None:
             f"Игрок 2: {state.captured_by_player[PLAYER_TWO]}  (до 2)"
         )
         cap_surf = small_font.render(cap_text, True, COLOR_SUBTEXT)
-        screen.blit(cap_surf, (layout.margin, panel_top + int(layout.info_panel_height * 0.28)))
+        if state.winner is None:
+            screen.blit(cap_surf, (layout.margin, panel_top + int(layout.info_panel_height * 0.28)))
 
         # Buttons
         draw_button(screen, restart_rect, "Сброс", small_font, primary=True)
